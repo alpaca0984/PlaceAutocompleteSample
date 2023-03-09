@@ -1,8 +1,6 @@
 package com.example.placeautocompletionsample
 
 import android.util.Log
-import androidx.compose.runtime.State
-import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import com.google.android.gms.common.api.ApiException
 import com.google.android.libraries.places.api.model.AutocompleteSessionToken
@@ -12,6 +10,10 @@ import com.google.android.libraries.places.api.net.FetchPlaceResponse
 import com.google.android.libraries.places.api.net.FindAutocompletePredictionsRequest
 import com.google.android.libraries.places.api.net.PlacesClient
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import javax.inject.Inject
 
 private const val TAG = "PlaceAutocompletionViewModel"
@@ -21,8 +23,8 @@ class MainViewModel @Inject constructor(
     private val placesClient: PlacesClient,
 ) : ViewModel() {
 
-    private val _placesState = mutableStateOf(PlacesState())
-    val placesState: State<PlacesState> = _placesState
+    private val _placesState = MutableStateFlow(PlacesState())
+    val placesState: StateFlow<PlacesState> = _placesState.asStateFlow()
 
     private var token = AutocompleteSessionToken.newInstance()
 
@@ -35,10 +37,12 @@ class MainViewModel @Inject constructor(
 
         placesClient.findAutocompletePredictions(request)
             .addOnSuccessListener { response ->
-                _placesState.value = _placesState.value.copy(
-                    query = query,
-                    predictions = response.autocompletePredictions,
-                )
+                _placesState.update { state ->
+                    state.copy(
+                        query = query,
+                        predictions = response.autocompletePredictions,
+                    )
+                }
             }
             .addOnFailureListener { exception: Exception? ->
                 if (exception is ApiException) {
@@ -55,9 +59,11 @@ class MainViewModel @Inject constructor(
         val request = FetchPlaceRequest.newInstance(placeId, placeFields)
         placesClient.fetchPlace(request)
             .addOnSuccessListener { response ->
-                _placesState.value = _placesState.value.copy(
-                    addressDetails = response.retrieveAddressDetails(),
-                )
+                _placesState.update { state ->
+                    state.copy(
+                        addressDetails = response.retrieveAddressDetails(),
+                    )
+                }
             }
             .addOnFailureListener { exception: Exception ->
                 if (exception is ApiException) {
